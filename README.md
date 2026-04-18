@@ -1,11 +1,19 @@
-# Pomodoro Timer Web App
+# Pomodoro Timer Web App ⏱️🔥
 
-A simple and modern Pomodoro timer built using HTML, CSS, and JavaScript.
+A modern Pomodoro timer deployed on AWS.
 
-## Features
+## 🚀 Features
 - Focus & Break timer
 - Circular progress UI
-- Responsive design
+- Clean design
 
-## Live Demo
-[View Project](PUT_YOUR_AWS_LINK_HERE)
+## ☁️ Deployment
+Hosted on AWS S3
+
+## 🌐 Live Demo
+https://ahmed-pomodoro-123.s3.us-east-1.amazonaws.com/index.html.html
+## 🛠️ Tech Stack
+- HTML
+- CSS
+- JavaScript
+- AWS S3
