@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141417;
+    --surface2: #1c1c21;
+    --border: #2a2a32;
+    --accent: #ff4d4d;
+    --accent2: #ff8c42;
+    --green: #3dffa0;
+    --blue: #4da6ff;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --radius: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px;
+    overflow-x: hidden;
+  }
+
+  /* Ambient background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -30%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(255,77,77,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 900px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 48px;
+  }
+
+  .logo {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .stats-header {
+    display: flex;
+    gap: 24px;
+  }
+
+  .stat-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 8px 18px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .stat-pill span {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* Main grid */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+  }
+
+  /* Timer card */
+  .timer-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 48px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .timer-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+
+  .timer-card.running::before { opacity: 1; }
+
+  /* Mode tabs */
+  .mode-tabs {
+    display: flex;
+    background: var(--surface2);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .tab-btn {
+    padding: 9px 20px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .tab-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  /* Timer ring */
+  .timer-ring-wrap {
+    position: relative;
+    width: 260px;
+    height: 260px;
+  }
+
+  .ring-svg {
+    position: absolute;
+    top: 0; left: 0;
+    transform: rotate(-90deg);
+    width: 100%;
+    height: 100%;
+  }
+
+  .ring-bg {
+    fill: none;
+    stroke: var(--surface2);
+    stroke-width: 6;
+  }
+
+  .ring-progress {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 753.98;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1s linear, stroke 0.4s;
+  }
+
+  .timer-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .timer-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 3.6rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .timer-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .btn-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 1.1rem;
+  }
+
+  .btn-icon:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: scale(1.05);
+  }
+
+  .btn-main {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    transition: all 0.2s;
+    box-shadow: 0 0 30px rgba(255,77,77,0.25);
+  }
+
+  .btn-main:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 40px rgba(255,77,77,0.4);
+  }
+
+  .btn-main:active { transform: scale(0.97); }
+
+  /* Session dots */
+  .session-dots {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+
+  .dot.done { background: var(--accent); border-color: var(--accent); }
+  .dot.current { background: transparent; border-color: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse-dot 1.5s infinite; }
+
+  @keyframes pulse-dot {
+    0%, 100% { box-shadow: 0 0 6px var(--accent); }
+    50% { box-shadow: 0 0 14px var(--accent); }
+  }
+
+  /* Task input */
+  .task-section {
+    width: 100%;
+  }
+
+  .task-input-wrap {
+    display: flex;
+    gap: 10px;
+  }
+
+  .task-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .task-input::placeholder { color: var(--muted); }
+  .task-input:focus { border-color: var(--accent); }
+
+  .btn-add {
+    padding: 12px 20px;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-add:hover { opacity: 0.85; transform: translateY(-1px); }
+
+  /* Sidebar */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+
+  .card-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Task list */
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 280px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    cursor: pointer;
+    animation: slide-in 0.25s ease;
+  }
+
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .task-item:hover { border-color: var(--border); }
+  .task-item.active { border-color: var(--accent); background: rgba(255,77,77,0.06); }
+  .task-item.done { opacity: 0.45; }
+  .task-item.done .task-name { text-decoration: line-through; }
+
+  .task-check {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    font-size: 0.7rem;
+    cursor: pointer;
+  }
+
+  .task-check.checked { background: var(--green); border-color: var(--green); color: var(--bg); }
+
+  .task-name {
+    flex: 1;
+    font-size: 0.88rem;
+    color: var(--text);
+  }
+
+  .task-pomos {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 3px 8px;
+  }
+
+  .task-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.2s;
+    line-height: 1;
+  }
+
+  .task-del:hover { color: var(--accent); }
+
+  /* Today stats */
+  .today-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-box {
+    background: var(--surface2);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-box:nth-child(1) .stat-num { color: var(--accent); }
+  .stat-box:nth-child(2) .stat-num { color: var(--blue); }
+  .stat-box:nth-child(3) .stat-num { color: var(--green); }
+  .stat-box:nth-child(4) .stat-num { color: var(--accent2); }
+
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  /* Weekly heatmap */
+  .heatmap {
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .heatmap-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+  }
+
+  .heatmap-bar {
+    width: 100%;
+    min-height: 4px;
+    border-radius: 4px;
+    background: var(--surface2);
+    transition: height 0.4s ease;
+    position: relative;
+  }
+
+  .heatmap-bar.has-data { background: var(--accent); opacity: 0.8; }
+  .heatmap-bar.today { opacity: 1 !important; box-shadow: 0 0 8px rgba(255,77,77,0.4); }
+
+  .heatmap-day {
+    font-size: 0.65rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  /* Settings */
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+
+  .settings-row:last-child { border-bottom: none; }
+
+  .setting-label { color: var(--muted); font-size: 0.8rem; }
+
+  .setting-input {
+    width: 64px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    text-align: center;
+    outline: none;
+  }
+
+  .setting-input:focus { border-color: var(--accent); }
+
+  /* Alarm toast */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(120px);
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 14px;
+    padding: 18px 28px;
+    text-align: center;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 100;
+    min-width: 280px;
+    box-shadow: 0 8px 40px rgba(255,77,77,0.2);
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .toast-title {
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 4px;
+    color: var(--accent);
+  }
+
+  .toast-sub { font-size: 0.8rem; color: var(--muted); }
+
+  /* Running glow */
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(255,77,77,0.1); }
+    50% { box-shadow: 0 0 40px rgba(255,77,77,0.2); }
+  }
+
+  .timer-card.running { animation: glow-pulse 2s infinite; }
+
+  /* Break mode */
+  .timer-card.break .ring-progress { stroke: var(--green); }
+  .timer-card.break .btn-main { background: var(--green); box-shadow: 0 0 30px rgba(61,255,160,0.25); }
+  .timer-card.break::before { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+  .timer-card.break body::before { background: radial-gradient(ellipse, rgba(61,255,160,0.07) 0%, transparent 70%); }
+
+  @media (max-width: 720px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .stats-header { display: none; }
+    header { margin-bottom: 28px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">Pomo<span>.</span>Pro</div>
+    <div class="stats-header">
+      <div class="stat-pill">الجلسات اليوم: <span id="h-today">0</span></div>
+      <div class="stat-pill">إجمالي الوقت: <span id="h-time">0 د</span></div>
+    </div>
+  </header>
+
+  <div class="main-grid">
+    <!-- Timer Card -->
+    <div class="timer-card" id="timerCard">
+      <div class="mode-tabs">
+        <button class="tab-btn active" data-mode="focus" onclick="switchMode('focus',this)">تركيز</button>
+        <button class="tab-btn" data-mode="short" onclick="switchMode('short',this)">استراحة قصيرة</button>
+        <button class="tab-btn" data-mode="long" onclick="switchMode('long',this)">استراحة طويلة</button>
+      </div>
+
+      <div class="timer-ring-wrap">
+        <svg class="ring-svg" viewBox="0 0 260 260">
+          <circle class="ring-bg" cx="130" cy="130" r="120"/>
+          <circle class="ring-progress" id="ringProgress" cx="130" cy="130" r="120"/>
+        </svg>
+        <div class="timer-center">
+          <div class="timer-display" id="timerDisplay">25:00</div>
+          <div class="timer-label" id="timerLabel">تركيز</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn-icon" onclick="resetTimer()" title="إعادة تعيين">↺</button>
+        <button class="btn-main" id="mainBtn" onclick="toggleTimer()">▶</button>
+        <button class="btn-icon" onclick="skipTimer()" title="تخطي">⏭</button>
+      </div>
+
+      <div class="session-dots" id="sessionDots"></div>
+
+      <div class="task-section">
+        <div class="task-input-wrap">
+          <input class="task-input" id="taskInput" placeholder="أضف مهمة جديدة..." onkeydown="if(event.key==='Enter')addTask()"/>
+          <button class="btn-add" onclick="addTask()">+ أضف</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Tasks -->
+      <div class="card">
+        <div class="card-title">المهام</div>
+        <div class="task-list" id="taskList">
+          <div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:20px 0">لا توجد مهام بعد</div>
+        </div>
+      </div>
+
+      <!-- Today Stats -->
+      <div class="card">
+        <div class="card-title">إحصائيات اليوم</div>
+        <div class="today-stats">
+          <div class="stat-box">
+            <div class="stat-num" id="statPomos">0</div>
+            <div class="stat-label">بومودورو</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num" id="statMins">0</div>
+            <div class="stat-label">دقيقة تركيز</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num" id="statTasks">0</div>
+            <div class="stat-label">مهمة منجزة</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num" id="statStreak">0</div>
+            <div class="stat-label">سلسلة أيام</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Chart -->
+      <div class="card">
+        <div class="card-title">هذا الأسبوع</div>
+        <div class="heatmap" id="heatmap"></div>
+      </div>
+
+      <!-- Settings -->
+      <div class="card">
+        <div class="card-title">الإعدادات</div>
+        <div class="settings-row">
+          <span class="setting-label">مدة التركيز (د)</span>
+          <input class="setting-input" id="setFocus" type="number" value="25" min="1" max="90" onchange="updateSettings()"/>
+        </div>
+        <div class="settings-row">
+          <span class="setting-label">استراحة قصيرة (د)</span>
+          <input class="setting-input" id="setShort" type="number" value="5" min="1" max="30" onchange="updateSettings()"/>
+        </div>
+        <div class="settings-row">
+          <span class="setting-label">استراحة طويلة (د)</span>
+          <input class="setting-input" id="setLong" type="number" value="15" min="1" max="60" onchange="updateSettings()"/>
+        </div>
+        <div class="settings-row">
+          <span class="setting-label">جلسات قبل استراحة طويلة</span>
+          <input class="setting-input" id="setRounds" type="number" value="4" min="2" max="8" onchange="updateSettings()"/>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <div class="toast-title" id="toastTitle">🍅 انتهى وقت التركيز!</div>
+  <div class="toast-sub" id="toastSub">حان وقت الاستراحة</div>
+</div>
+
+<script>
+// ---- State ----
+let settings = { focus: 25, short: 5, long: 15, rounds: 4 };
+let state = {
+  mode: 'focus',
+  running: false,
+  secondsLeft: 25 * 60,
+  totalSeconds: 25 * 60,
+  sessionsDone: 0,
+  currentRound: 0,
+  tasks: [],
+  activeTaskId: null,
+  todayPomos: 0,
+  todayMins: 0,
+  todayTasks: 0,
+  weekData: [0,0,0,0,0,0,0],
+  streak: 0,
+};
+
+let interval = null;
+const CIRC = 2 * Math.PI * 120;
+
+// Load from localStorage
+function load() {
+  const today = new Date().toDateString();
+  const saved = JSON.parse(localStorage.getItem('pomopro') || '{}');
+  if (saved.date === today) {
+    state.todayPomos = saved.pomos || 0;
+    state.todayMins  = saved.mins  || 0;
+    state.todayTasks = saved.tasks || 0;
+    state.weekData   = saved.week  || [0,0,0,0,0,0,0];
+    state.streak     = saved.streak|| 0;
+    state.tasks      = saved.taskList || [];
+  } else if (saved.date) {
+    // New day — shift week
+    const w = saved.week || [0,0,0,0,0,0,0];
+    w.shift(); w.push(0);
+    state.weekData = w;
+    // streak
+    const diff = Math.floor((new Date(today) - new Date(saved.date)) / 86400000);
+    state.streak = diff === 1 && (saved.pomos||0) > 0 ? (saved.streak||0)+1 : (saved.pomos||0)>0?1:0;
+    state.tasks = saved.taskList || [];
+  }
+  updateSettings();
+  renderTasks();
+  renderStats();
+  renderHeatmap();
+  renderDots();
+}
+
+function save() {
+  const today = new Date().toDateString();
+  const w = [...state.weekData];
+  const todayIdx = 6;
+  w[todayIdx] = state.todayPomos;
+  localStorage.setItem('pomopro', JSON.stringify({
+    date: today, pomos: state.todayPomos, mins: state.todayMins,
+    tasks: state.todayTasks, week: w, streak: state.streak,
+    taskList: state.tasks,
+  }));
+}
+
+// ---- Timer ----
+function toggleTimer() {
+  if (state.running) pause();
+  else start();
+}
+
+function start() {
+  state.running = true;
+  document.getElementById('mainBtn').textContent = '⏸';
+  document.getElementById('timerCard').classList.add('running');
+  interval = setInterval(tick, 1000);
+}
+
+function pause() {
+  state.running = false;
+  document.getElementById('mainBtn').textContent = '▶';
+  document.getElementById('timerCard').classList.remove('running');
+  clearInterval(interval);
+}
+
+function tick() {
+  if (state.secondsLeft <= 0) {
+    onComplete();
+    return;
+  }
+  state.secondsLeft--;
+  render();
+}
+
+function onComplete() {
+  pause();
+  if (state.mode === 'focus') {
+    state.sessionsDone++;
+    state.currentRound++;
+    state.todayPomos++;
+    state.todayMins += settings.focus;
+    // add pomo to active task
+    if (state.activeTaskId !== null) {
+      const t = state.tasks.find(x => x.id === state.activeTaskId);
+      if (t) t.pomos = (t.pomos||0) + 1;
+    }
+    const w = [...state.weekData];
+    w[6] = state.todayPomos;
+    state.weekData = w;
+    save();
+    renderStats();
+    renderHeatmap();
+    renderTasks();
+    showToast('🍅 انتهى وقت التركيز!', state.currentRound >= settings.rounds ? 'وقت استراحة طويلة!' : 'وقت استراحة قصيرة!');
+    if (state.currentRound >= settings.rounds) {
+      state.currentRound = 0;
+      switchMode('long', null, true);
+    } else {
+      switchMode('short', null, true);
+    }
+  } else {
+    showToast('⚡ انتهت الاستراحة!', 'هل أنت مستعد للتركيز؟');
+    switchMode('focus', null, true);
+  }
+  renderDots();
+}
+
+function resetTimer() {
+  pause();
+  state.secondsLeft = state.totalSeconds;
+  render();
+}
+
+function skipTimer() {
+  pause();
+  onComplete();
+}
+
+function switchMode(mode, btn, auto = false) {
+  pause();
+  state.mode = mode;
+  const card = document.getElementById('timerCard');
+  card.classList.remove('break');
+
+  const durations = { focus: settings.focus, short: settings.short, long: settings.long };
+  const labels = { focus: 'تركيز', short: 'استراحة قصيرة', long: 'استراحة طويلة' };
+  state.totalSeconds = durations[mode] * 60;
+  state.secondsLeft = state.totalSeconds;
+
+  if (mode !== 'focus') card.classList.add('break');
+
+  document.getElementById('timerLabel').textContent = labels[mode];
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+
+  render();
+  if (auto) start();
+}
+
+function render() {
+  const m = String(Math.floor(state.secondsLeft / 60)).padStart(2, '0');
+  const s = String(state.secondsLeft % 60).padStart(2, '0');
+  document.getElementById('timerDisplay').textContent = `${m}:${s}`;
+  const progress = state.secondsLeft / state.totalSeconds;
+  const offset = CIRC * progress;
+  document.getElementById('ringProgress').style.strokeDashoffset = CIRC - offset;
+  document.title = `${m}:${s} — PomoPro`;
+}
+
+// ---- Dots ----
+function renderDots() {
+  const wrap = document.getElementById('sessionDots');
+  wrap.innerHTML = '';
+  for (let i = 0; i < settings.rounds; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    if (i < state.currentRound) d.classList.add('done');
+    else if (i === state.currentRound && state.mode === 'focus') d.classList.add('current');
+    wrap.appendChild(d);
+  }
+}
+
+// ---- Tasks ----
+function addTask() {
+  const inp = document.getElementById('taskInput');
+  const name = inp.value.trim();
+  if (!name) return;
+  const task = { id: Date.now(), name, done: false, pomos: 0 };
+  state.tasks.unshift(task);
+  inp.value = '';
+  renderTasks();
+  save();
+}
+
+function renderTasks() {
+  const list = document.getElementById('taskList');
+  if (state.tasks.length === 0) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:20px 0">لا توجد مهام بعد</div>';
+    return;
+  }
+  list.innerHTML = state.tasks.map(t => `
+    <div class="task-item ${state.activeTaskId===t.id?'active':''} ${t.done?'done':''}" onclick="selectTask(${t.id})">
+      <div class="task-check ${t.done?'checked':''}" onclick="event.stopPropagation();toggleTask(${t.id})">
+        ${t.done ? '✓' : ''}
+      </div>
+      <div class="task-name">${escHtml(t.name)}</div>
+      ${t.pomos > 0 ? `<div class="task-pomos">🍅 ${t.pomos}</div>` : ''}
+      <button class="task-del" onclick="event.stopPropagation();deleteTask(${t.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+function selectTask(id) {
+  state.activeTaskId = state.activeTaskId === id ? null : id;
+  renderTasks();
+}
+
+function toggleTask(id) {
+  const t = state.tasks.find(x => x.id === id);
+  if (!t) return;
+  t.done = !t.done;
+  if (t.done) state.todayTasks++;
+  else if (state.todayTasks > 0) state.todayTasks--;
+  renderTasks();
+  renderStats();
+  save();
+}
+
+function deleteTask(id) {
+  state.tasks = state.tasks.filter(x => x.id !== id);
+  if (state.activeTaskId === id) state.activeTaskId = null;
+  renderTasks();
+  save();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ---- Stats ----
+function renderStats() {
+  document.getElementById('statPomos').textContent = state.todayPomos;
+  document.getElementById('statMins').textContent  = state.todayMins;
+  document.getElementById('statTasks').textContent = state.todayTasks;
+  document.getElementById('statStreak').textContent = state.streak;
+  document.getElementById('h-today').textContent = state.todayPomos;
+  document.getElementById('h-time').textContent  = state.todayMins + ' د';
+}
+
+// ---- Heatmap ----
+const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+function renderHeatmap() {
+  const hm = document.getElementById('heatmap');
+  const today = new Date().getDay();
+  const maxVal = Math.max(...state.weekData, 1);
+  // Show last 7 days
+  const labels = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = (today - i + 7) % 7;
+    labels.push(days[d].substring(0,3));
+  }
+  hm.innerHTML = state.weekData.map((v, i) => {
+    const h = Math.max(8, Math.round((v / maxVal) * 60));
+    const isToday = i === 6;
+    return `<div class="heatmap-col">
+      <div class="heatmap-bar ${v>0?'has-data':''} ${isToday?'today':''}" style="height:${h}px"></div>
+      <div class="heatmap-day">${labels[i]}</div>
+    </div>`;
+  }).join('');
+}
+
+// ---- Toast ----
+function showToast(title, sub) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastSub').textContent = sub;
+  t.classList.add('show');
+  // Vibrate if supported
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+// ---- Settings ----
+function updateSettings() {
+  settings.focus  = parseInt(document.getElementById('setFocus').value)  || 25;
+  settings.short  = parseInt(document.getElementById('setShort').value)  || 5;
+  settings.long   = parseInt(document.getElementById('setLong').value)   || 15;
+  settings.rounds = parseInt(document.getElementById('setRounds').value) || 4;
+  if (!state.running) {
+    const durations = { focus: settings.focus, short: settings.short, long: settings.long };
+    state.totalSeconds = durations[state.mode] * 60;
+    state.secondsLeft  = state.totalSeconds;
+    render();
+  }
+  renderDots();
+}
+
+// ---- Init ----
+load();
+render();
+</script>
+</body>
+</html>
